@@ -42,7 +42,8 @@
       ".js"
     ],
     "reporter": [
-      "text"
+      "text",
+      "lcov"
     ],
     "all": true
   }
