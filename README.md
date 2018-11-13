@@ -12,13 +12,13 @@ This project is inspired by node-custom-error https://github.com/jproulx/node-cu
 ## Install
 
 ```bash
-$ npm install ts-error-generator --save
+$ npm install @b2b-alive/ts-error-generator --save
 ```
 
 ## Usage
 
 ```typescript
-import defineError, { ICustomError } from 'ts-error-generator';
+import defineError, { ICustomError } from '@b2b-alive/ts-error-generator';
 
 interface APIError extends ICustomError{
     required: string
