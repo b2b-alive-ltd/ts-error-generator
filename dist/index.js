@@ -20,26 +20,18 @@ class CustomErrors {
         }
         return constructor;
     }
-    static setMessage(error, func, message) {
-        Object.defineProperties(error, {
-            message: {
-                value: message,
-                'enumerable': true,
-                'writable': true,
-                'configurable': true
-            }
-        });
-        Object.setPrototypeOf(error, Object.create(func.prototype, {
-            message: {
-                value: message,
-                'enumerable': true,
-                'writable': true,
-                'configurable': true
-            }
-        }));
-    }
     static defineError(name, parameters, constructor) {
         const errorConstructor = CustomErrors.checkConstructor(constructor);
+        const errorPrototypeNames = Object.getOwnPropertyNames(Error.prototype);
+        const parentProperties = {};
+        Object.getOwnPropertyNames(errorConstructor.prototype).forEach(function (name) {
+            if (errorPrototypeNames.indexOf(name) === -1) {
+                const desc = Object.getOwnPropertyDescriptor(errorConstructor.prototype, name);
+                if (desc && desc.enumerable) {
+                    parentProperties[name] = desc;
+                }
+            }
+        });
         const properties = {};
         if (parameters) {
             Object.keys(parameters).forEach(function (property) {
@@ -52,7 +44,7 @@ class CustomErrors {
             });
         }
         const CustomErrorCreator = function (...params) {
-            const localProperties = Object.assign({}, properties);
+            const localProperties = Object.assign({}, parentProperties, properties);
             const errors = [];
             const messages = [];
             const length = arguments.length;
@@ -69,24 +61,37 @@ class CustomErrors {
                     messages.push(param);
                 }
             }
-            CustomErrors.setMessage(this, CustomErrorCreator, util_1.default.format.apply(null, messages));
-            errorConstructor.apply(this, arguments);
-            Error.captureStackTrace(this, CustomErrorCreator);
-            Object.setPrototypeOf(this, CustomErrorCreator.prototype);
+            const proxy = new Error(arguments[0]);
+            Object.setPrototypeOf(proxy, Object.create(CustomErrorCreator.prototype));
+            const messageProperty = {
+                value: util_1.default.format.apply(null, messages),
+                'enumerable': false,
+                'writable': true,
+                'configurable': true
+            };
+            Object.defineProperty(proxy, 'message', messageProperty);
+            errorConstructor.apply(proxy, arguments);
+            Error.captureStackTrace(proxy, CustomErrorCreator);
+            localProperties.stack = {
+                'value': proxy.stack,
+                'enumerable': false,
+                'writable': true,
+                'configurable': true
+            };
             if (errors.length > 0) {
-                let newStack = this.stack;
+                let newStack = proxy.stack;
                 errors.forEach(function (error) {
                     newStack = newStack + '\n' + error.stack;
                 });
                 localProperties.stack = {
                     'value': newStack,
-                    'enumerable': true,
+                    'enumerable': false,
                     'writable': true,
                     'configurable': true
                 };
             }
-            Object.defineProperties(this, localProperties);
-            return this;
+            Object.defineProperties(proxy, localProperties);
+            return proxy;
         };
         const proto = {
             'constructor': {
@@ -106,9 +111,11 @@ class CustomErrors {
                 'configurable': false,
                 'value': function () {
                     const json = {};
-                    Object.getOwnPropertyNames(this).forEach(function (name) {
-                        json[name] = name == 'stack' ? this[name].split('\n') : this[name];
-                    }, this);
+                    for (let name in this) {
+                        json[name] = this[name];
+                    }
+                    json.message = this.message;
+                    json.stack = this.stack.split('\n');
                     return json;
                 }
             }
@@ -127,5 +134,6 @@ class CustomErrors {
         return CustomErrorCreator;
     }
 }
-exports.default = CustomErrors;
+exports.defineError = CustomErrors.defineError;
+exports.default = exports.defineError;
 //# sourceMappingURL=index.js.map

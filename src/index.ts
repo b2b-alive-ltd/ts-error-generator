@@ -9,7 +9,7 @@ export interface ICustomError extends Error {
     toJSON(): object
 }
 
-export default class CustomErrors {
+class CustomErrors {
 
     private static checkConstructor(constructor?: any) {
         if (constructor && typeof constructor == 'function') {
@@ -26,29 +26,20 @@ export default class CustomErrors {
         return constructor;
     }
 
-    private static setMessage(error: Error, func: Function, message: string) {
-        Object.defineProperties(error, {
-            message: {
-                value: message,
-                'enumerable': true,
-                'writable': true,
-                'configurable': true
-            }
-        });
-
-        Object.setPrototypeOf(error, Object.create(func.prototype, {
-            message: {
-                value: message,
-                'enumerable': true,
-                'writable': true,
-                'configurable': true
-            }
-        }));
-    }
-
-    static defineError<T = ICustomError>(name: string, parameters?: { [key: string]: any }, constructor?: any): INewCustomError<T> {
+    static defineError<T = ICustomError>(name: string, parameters?: { [key: string]: any } | null, constructor?: any): INewCustomError<T> {
 
         const errorConstructor = CustomErrors.checkConstructor(constructor);
+        const errorPrototypeNames = Object.getOwnPropertyNames(Error.prototype);
+
+        const parentProperties: { [key: string]: any } = {};
+        Object.getOwnPropertyNames(errorConstructor.prototype).forEach(function (name) {
+            if (errorPrototypeNames.indexOf(name) === -1){
+                const desc = Object.getOwnPropertyDescriptor(errorConstructor.prototype, name)
+                if(desc && desc.enumerable){
+                    parentProperties[name] = desc
+                }
+            }
+        });
 
         const properties: { [key: string]: any } = {};
         if (parameters) {
@@ -64,7 +55,10 @@ export default class CustomErrors {
 
         const CustomErrorCreator = function (...params: any[]): Error {
 
-            const localProperties = {...properties};
+            const localProperties = {
+                ...parentProperties,
+                ...properties
+            };
 
             const errors = [];
             const messages = [];
@@ -81,30 +75,43 @@ export default class CustomErrors {
                 }
             }
 
+            const proxy = new Error(arguments[0]);
+            Object.setPrototypeOf(proxy, Object.create(CustomErrorCreator.prototype));
 
-            CustomErrors.setMessage(this, CustomErrorCreator, util.format.apply(null, messages));
-            errorConstructor.apply(this, arguments);
+            const messageProperty = {
+                value: util.format.apply(null, messages),
+                'enumerable': false,
+                'writable': true,
+                'configurable': true
+            };
+            Object.defineProperty(proxy, 'message', messageProperty);
+            errorConstructor.apply(proxy, arguments);
+            Error.captureStackTrace(proxy, CustomErrorCreator);
 
-            Error.captureStackTrace(this, CustomErrorCreator);
 
-            Object.setPrototypeOf(this, CustomErrorCreator.prototype);
+            localProperties.stack = {
+                'value': proxy.stack,
+                'enumerable': false,
+                'writable': true,
+                'configurable': true
+            };
 
             if (errors.length > 0) {
-                let newStack = this.stack;
+                let newStack = proxy.stack;
                 errors.forEach(function (error) {
                     newStack = newStack + '\n' + error.stack;
                 });
                 localProperties.stack = {
                     'value': newStack,
-                    'enumerable': true,
+                    'enumerable': false,
                     'writable': true,
                     'configurable': true
                 };
             }
 
-            Object.defineProperties(this, localProperties);
 
-            return this;
+            Object.defineProperties(proxy, localProperties);
+            return proxy;
         };
 
         const proto: { [key: string]: any } = {
@@ -125,9 +132,11 @@ export default class CustomErrors {
                 'configurable': false,
                 'value': function () {
                     const json: { [key: string]: any } = {};
-                    Object.getOwnPropertyNames(this).forEach(function (name) {
-                        json[name] = name == 'stack' ? this[name].split('\n') : this[name];
-                    }, this);
+                    for (let name in this) {
+                        json[name] = this[name];
+                    }
+                    json.message = this.message;
+                    json.stack = this.stack.split('\n');
                     return json;
                 }
             }
@@ -148,3 +157,6 @@ export default class CustomErrors {
         return <INewCustomError<T>> <unknown> CustomErrorCreator;
     }
 }
+
+export const defineError = CustomErrors.defineError;
+export default defineError;

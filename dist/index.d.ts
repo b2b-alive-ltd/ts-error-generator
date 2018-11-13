@@ -4,11 +4,11 @@ interface INewCustomError<T> {
 export interface ICustomError extends Error {
     toJSON(): object;
 }
-export default class CustomErrors {
+declare class CustomErrors {
     private static checkConstructor;
-    private static setMessage;
     static defineError<T = ICustomError>(name: string, parameters?: {
         [key: string]: any;
-    }, constructor?: any): INewCustomError<T>;
+    } | null, constructor?: any): INewCustomError<T>;
 }
-export {};
+export declare const defineError: typeof CustomErrors.defineError;
+export default defineError;
