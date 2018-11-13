@@ -1,5 +1,9 @@
 [![Build Status](https://travis-ci.org/b2b-alive-ltd/ts-error-generator.svg?branch=master)](https://travis-ci.org/b2b-alive-ltd/ts-error-generator)
 [![Coverage Status](https://coveralls.io/repos/github/b2b-alive-ltd/ts-error-generator/badge.svg?branch=master)](https://coveralls.io/github/b2b-alive-ltd/ts-error-generator?branch=master)
+
+
+[![NPM](https://nodei.co/npm/@b2b-alive/ts-error-generato.png)](https://www.npmjs.com/package/@b2b-alive/ts-error-generator)
+
 ts-error-generator
 ===================
 
