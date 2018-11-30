@@ -1,4 +1,4 @@
-interface INewCustomError<T> {
+interface INewCustomError<T> extends ErrorConstructor {
     new (...args: any[]): T;
 }
 export interface ICustomError extends Error {

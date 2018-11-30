@@ -1,7 +1,7 @@
 import util from 'util';
 
 
-interface INewCustomError<T> {
+interface INewCustomError<T> extends ErrorConstructor{
     new(...args: any[]): T
 }
 
